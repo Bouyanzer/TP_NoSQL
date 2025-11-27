@@ -1,16 +1,3 @@
-C'est une excellente initiative. Pour avoir un fichier `.md` (Markdown) propre et complet pour GitHub, il faut structurer les informations de manière logique : commencer par la théorie (NoSQL), passer à l'installation, puis aux commandes (CRUD, structures de données) et finir par les aspects avancés (Pub/Sub, Persistance, Administration).
-
-J'ai fusionné et réorganisé l'intégralité de tes deux textes pour qu'ils ne forment qu'un seul guide cohérent.
-
-Voici le contenu complet prêt à être copié-collé dans un fichier nommé `README.md` ou `REDIS_GUIDE.md`.
-
-````markdown
-# Guide Complet : Découverte et Maîtrise de Redis & NoSQL
-
-Ce rapport technique et guide pratique explore les concepts des bases de données NoSQL, l'installation de Redis, ses structures de données, ainsi que ses fonctionnalités avancées (Pub/Sub, Persistance, Administration).
-
----
-
 ## 📑 Table des Matières
 1. [Introduction au NoSQL et à Redis](#1-introduction-au-nosql-et-à-redis)
 2. [Installation et Configuration](#2-installation-et-configuration)
