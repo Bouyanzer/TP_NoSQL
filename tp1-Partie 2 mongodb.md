@@ -14,109 +14,9 @@ Vérifier que le conteneur tourne :
 docker ps
 ```
 
----
-
-## 2. Jeu de données 1 : Base lesfilms (JSON)
+## 2. Jeu de données 2 : Base sample_mflix (BSON)
 
 ### 2.1 Importation des données
-Copier le fichier `films.json` dans le conteneur et l'importer :
-
-```bash
-docker cp films.json mongodb:/films.json
-docker exec -it mongodb mongoimport --db lesfilms --collection films --file /films.json --jsonArray
-```
-
-### 2.2 Requêtes de consultation
-
-**1. Vérification et structure d'un document**
-```javascript
-db.films.count()
-db.films.findOne()
-```
-
-**2. Films d'action**
-```javascript
-db.films.find({ genre: "Action" })
-db.films.count({ genre: "Action" })
-```
-
-**3. Films d'action en France (1963)**
-```javascript
-db.films.find({ genre: "Action", country: "FR" })
-db.films.find({ genre: "Action", country: "FR", year: 1963 })
-```
-
-**4. Projections (Affichage sélectif)**
-```javascript
-// Sans les grades
-db.films.find({ genre: "Action", country: "FR" }, { grades: 0 })
-// Sans l'identifiant (_id)
-db.films.find({ genre: "Action", country: "FR" }, { _id: 0 })
-// Titres + Grades uniquement
-db.films.find({ genre: "Action", country: "FR" }, { _id: 0, title: 1, grades: 1 })
-```
-
-**5. Recherche sur les notes (Tableaux)**
-```javascript
-// Au moins une note > 10
-db.films.find(
-    { "grades.note": { $gt: 10 } },
-    { _id: 0, title: 1, grades: 1 }
-)
-
-// QUE des notes > 10 (Strictement toutes)
-db.films.find(
-    { grades: { $not: { $elemMatch: { note: { $lte: 10 } } } } },
-    { _id: 0, title: 1, grades: 1 }
-)
-```
-
-**6. Requêtes diverses**
-
-**Afficher les différents genres présents**
-```javascript
-db.films.distinct("genre")
-```
-
-**Afficher les différents grades attribués**
-```javascript
-db.films.distinct("grades.note")
-```
-
-**Films avec artistes spécifiques (exemple avec liste d'IDs)**
-```javascript
-db.films.find({ actors: { $in: ["artist:4", "artist:18", "artist:11"] } })
-```
-
-**Films sans résumé**
-```javascript
-db.films.find({ summary: { $exists: false } })
-```
-
-**Films avec Leonardo DiCaprio en 1997**
-```javascript
-db.films.find({
-    "actors.first_name": "Leonardo",
-    "actors.last_name": "DiCaprio",
-    year: 1997
-})
-```
-
-**Films avec DiCaprio OU en 1997**
-```javascript
-db.films.find({
-    $or: [
-        { "actors.first_name": "Leonardo", "actors.last_name": "DiCaprio" },
-        { year: 1997 }
-    ]
-})
-```
-
----
-
-## 3. Jeu de données 2 : Base sample_mflix (BSON)
-
-### 3.1 Importation des données
 Télécharger et restaurer l'archive BSON :
 
 ```bash
@@ -127,7 +27,7 @@ curl [https://atlas-education.s3.amazonaws.com/sampledata.archive](https://atlas
 mongorestore --archive=sampledata.archive --port=27017
 ```
 
-### 3.2 Partie 1 : Filtrage et Projections
+### 2.2 Partie 1 : Filtrage et Projections
 
 **1. 5 films sortis depuis 2015**
 ```javascript
@@ -157,7 +57,7 @@ db.movies.find({ genres: { $all: ["Drama", "Romance"] } })
 db.movies.find({ rated: { $exists: false } }, { title: 1 })
 ```
 
-### 3.3 Partie 2 : Pipeline d'Agrégation
+### 2.3 Partie 2 : Pipeline d'Agrégation
 
 **6. Nombre de films par année**
 ```javascript
@@ -203,7 +103,7 @@ db.movies.aggregate([
 ])
 ```
 
-### 3.4 Partie 3 : Mises à jour (Updates)
+### 2.4 Partie 3 : Mises à jour (Updates)
 
 **11. Ajouter un champ `etat`**
 ```javascript
@@ -228,7 +128,7 @@ db.movies.updateOne(
 )
 ```
 
-### 3.5 Partie 4 : Requêtes Complexes
+### 2.5 Partie 4 : Requêtes Complexes
 
 **15. Films les mieux notés par décennie**
 *Utilisation de l'arithmétique pour grouper par tranches de 10 ans.*
@@ -263,7 +163,7 @@ db.movies.find(
 )
 ```
 
-### 3.6 Partie 5 : Indexation & Performance
+### 2.6 Partie 5 : Indexation & Performance
 
 **19. Créer un index sur l'année**
 ```javascript
@@ -292,6 +192,108 @@ db.movies.createIndex({ year: 1, "imdb.rating": -1 })
 ```
 
 ---
+---
+
+## 3. Jeu de données 1 : Base lesfilms (JSON)
+
+### 3.1 Importation des données
+Copier le fichier `films.json` dans le conteneur et l'importer :
+
+```bash
+docker cp films.json mongodb:/films.json
+docker exec -it mongodb mongoimport --db lesfilms --collection films --file /films.json --jsonArray
+```
+
+### 3.2 Requêtes de consultation
+
+**1. Vérification et structure d'un document**
+```javascript
+db.films.count()
+db.films.findOne()
+```
+
+**2. Films d'action**
+```javascript
+db.films.find({ genre: "Action" })
+db.films.count({ genre: "Action" })
+```
+
+**3. Films d'action en France (1963)**
+```javascript
+db.films.find({ genre: "Action", country: "FR" })
+db.films.find({ genre: "Action", country: "FR", year: 1963 })
+```
+
+**4. Projections (Affichage sélectif)**
+```javascript
+// Sans les grades
+db.films.find({ genre: "Action", country: "FR" }, { grades: 0 })
+// Sans l'identifiant (_id)
+db.films.find({ genre: "Action", country: "FR" }, { _id: 0 })
+// Titres + Grades uniquement
+db.films.find({ genre: "Action", country: "FR" }, { _id: 0, title: 1, grades: 1 })
+```
+
+**5. Recherche sur les notes (Tableaux)**
+```javascript
+// Au moins une note > 10
+db.films.find(
+    { "grades.grade": { $gt: 10 } },
+    { _id: 0, title: 1, grades: 1 }
+)
+
+// QUE des notes > 10 (Strictement toutes)
+db.films.find(
+    { grades: { $not: { $elemMatch: { note: { $lte: 10 } } } } },
+    { _id: 0, title: 1, grades: 1 }
+)
+```
+
+**6. Requêtes diverses**
+
+**Afficher les différents genres présents**
+```javascript
+db.films.distinct("genre")
+```
+
+**Afficher les différents grades attribués**
+```javascript
+db.films.distinct("grades.note")
+```
+
+**Films avec artistes spécifiques (exemple avec liste d'IDs)**
+```javascript
+ddb.films.find({
+  artists: { $in: ["artist:4", "artist:18", "artist:11"] }
+})
+```
+
+**Films sans résumé**
+```javascript
+db.films.find({ summary: { $exists: false } })
+```
+
+**Films avec Leonardo DiCaprio en 1997**
+```javascript
+db.films.find({
+    "actors.first_name": "Leonardo",
+    "actors.last_name": "DiCaprio",
+    year: 1997
+})
+```
+
+**Films avec DiCaprio OU en 1997**
+```javascript
+db.films.find({
+    $or: [
+        { "actors.first_name": "Leonardo", "actors.last_name": "DiCaprio" },
+        { year: 1997 }
+    ]
+})
+```
+
+---
+
 
 ## 4. Nettoyage
 
