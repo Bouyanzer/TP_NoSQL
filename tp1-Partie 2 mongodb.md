@@ -1,22 +1,4 @@
-# 🍃 TP Prise en main de MongoDB
-
-Ce dépôt contient les instructions et les commandes pour le TP d'introduction à MongoDB.
-L'objectif est de manipuler deux bases de données (`lesfilms` et `sample_mflix`) pour apprendre le CRUD, les agrégations complexes, l'optimisation et l'indexation.
-
-## 📑 Table des Matières
-1. [Prérequis & Installation Docker](#1-prérequis--installation-docker)
-2. [Jeu de données 1 : Base lesfilms (JSON)](#2-jeu-de-données-1--base-lesfilms-json)
-    - [Importation](#21-importation-des-données)
-    - [Requêtes de consultation](#22-requêtes-de-consultation)
-3. [Jeu de données 2 : Base sample_mflix (BSON)](#3-jeu-de-données-2--base-sample_mflix-bson)
-    - [Importation](#31-importation-des-données)
-    - [Partie 1 : Filtrage et Projections](#32-partie-1--filtrage-et-projections)
-    - [Partie 2 : Pipeline d'Agrégation](#33-partie-2--pipeline-dagrégation)
-    - [Partie 3 : Mises à jour (Updates)](#34-partie-3--mises-à-jour-updates)
-    - [Partie 4 : Requêtes Complexes](#35-partie-4--requêtes-complexes)
-    - [Partie 5 : Indexation & Performance](#36-partie-5--indexation--performance)
-4. [Nettoyage](#4-nettoyage)
-
+#  TP Prise en main de MongoDB
 ---
 
 ## 1. Prérequis & Installation Docker
