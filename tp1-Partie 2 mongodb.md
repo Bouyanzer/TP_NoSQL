@@ -1,4 +1,21 @@
-#  TP Prise en main de MongoDB
+# 🍃 TP Prise en main de MongoDB
+
+Ce dépôt contient les instructions et les commandes pour le TP d'introduction à MongoDB.
+L'objectif est de manipuler deux bases de données (`lesfilms` et `sample_mflix`) pour apprendre le CRUD, les agrégations complexes, l'optimisation et l'indexation.
+
+## 📑 Table des Matières
+1. [Prérequis & Installation Docker](#1-prérequis--installation-docker)
+2. [Jeu de données 1 : Base lesfilms (JSON)](#2-jeu-de-données-1--base-lesfilms-json)
+    - [Importation](#21-importation-des-données)
+    - [Requêtes de consultation](#22-requêtes-de-consultation)
+3. [Jeu de données 2 : Base sample_mflix (BSON)](#3-jeu-de-données-2--base-sample_mflix-bson)
+    - [Importation](#31-importation-des-données)
+    - [Partie 1 : Filtrage et Projections](#32-partie-1--filtrage-et-projections)
+    - [Partie 2 : Pipeline d'Agrégation](#33-partie-2--pipeline-dagrégation)
+    - [Partie 3 : Mises à jour (Updates)](#34-partie-3--mises-à-jour-updates)
+    - [Partie 4 : Requêtes Complexes](#35-partie-4--requêtes-complexes)
+    - [Partie 5 : Indexation & Performance](#36-partie-5--indexation--performance)
+4. [Nettoyage](#4-nettoyage)
 
 ---
 
@@ -37,17 +54,13 @@ db.films.findOne()
 
 **2. Films d'action**
 ```javascript
-// Liste des films
 db.films.find({ genre: "Action" })
-// Nombre de films
 db.films.count({ genre: "Action" })
 ```
 
 **3. Films d'action en France (1963)**
 ```javascript
-// Produits en France
 db.films.find({ genre: "Action", country: "FR" })
-// En 1963
 db.films.find({ genre: "Action", country: "FR", year: 1963 })
 ```
 
@@ -55,22 +68,21 @@ db.films.find({ genre: "Action", country: "FR", year: 1963 })
 ```javascript
 // Sans les grades
 db.films.find({ genre: "Action", country: "FR" }, { grades: 0 })
-// Sans l'identifiant (_id) (Note: mettre _id:0 masque l'ID)
+// Sans l'identifiant (_id)
 db.films.find({ genre: "Action", country: "FR" }, { _id: 0 })
-// Titres + Grades uniquement sans ID
+// Titres + Grades uniquement
 db.films.find({ genre: "Action", country: "FR" }, { _id: 0, title: 1, grades: 1 })
 ```
 
 **5. Recherche sur les notes (Tableaux)**
 ```javascript
-// Au moins une note > 10 (Attention: affiche le film même si une autre note est < 10)
+// Au moins une note > 10
 db.films.find(
     { "grades.note": { $gt: 10 } },
     { _id: 0, title: 1, grades: 1 }
 )
 
-// QUE des notes > 10 (Strictement toutes les notes doivent être > 10)
-// On utilise la double négation : on ne veut PAS de note inférieure ou égale à 10
+// QUE des notes > 10 (Strictement toutes)
 db.films.find(
     { grades: { $not: { $elemMatch: { note: { $lte: 10 } } } } },
     { _id: 0, title: 1, grades: 1 }
@@ -78,27 +90,38 @@ db.films.find(
 ```
 
 **6. Requêtes diverses**
+
+**Afficher les différents genres présents**
 ```javascript
-// Afficher les différents genres présents
 db.films.distinct("genre")
+```
 
-// Afficher les différents grades attribués
+**Afficher les différents grades attribués**
+```javascript
 db.films.distinct("grades.note")
+```
 
-// Films avec artistes spécifiques (exemple avec liste d'IDs)
+**Films avec artistes spécifiques (exemple avec liste d'IDs)**
+```javascript
 db.films.find({ actors: { $in: ["artist:4", "artist:18", "artist:11"] } })
+```
 
-// Films sans résumé
+**Films sans résumé**
+```javascript
 db.films.find({ summary: { $exists: false } })
+```
 
-// Films avec Leonardo DiCaprio en 1997
+**Films avec Leonardo DiCaprio en 1997**
+```javascript
 db.films.find({
     "actors.first_name": "Leonardo",
     "actors.last_name": "DiCaprio",
     year: 1997
 })
+```
 
-// DiCaprio OU 1997
+**Films avec DiCaprio OU en 1997**
+```javascript
 db.films.find({
     $or: [
         { "actors.first_name": "Leonardo", "actors.last_name": "DiCaprio" },
