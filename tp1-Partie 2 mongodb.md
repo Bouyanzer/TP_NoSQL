@@ -1,306 +1,298 @@
-## 📑 Table des Matières
-1. [Introduction à MongoDB et au NoSQL](#1-introduction-à-mongodb-et-au-nosql)
-2. [Installation et Configuration avec Docker](#2-installation-et-configuration-avec-docker)
-3. [Importation des Données](#3-importation-des-données)
-4. [Requêtes sur la Base lesfilms](#4-requêtes-sur-la-base-lesfilms)
-5. [Requêtes sur la Base sample_mflix](#5-requêtes-sur-la-base-sample_mflix)
-6. [Agrégations MongoDB](#6-agrégations-mongodb)
-7. [Opérations de Mise à Jour](#7-opérations-de-mise-à-jour)
-8. [Indexation et Analyse de Performances](#8-indexation-et-analyse-de-performances)
-9. [Arrêt du Serveur MongoDB](#9-arrêt-du-serveur-mongodb)
-10. [Conclusion](#10-conclusion)
+#  TP Prise en main de MongoDB
 
 ---
 
-## 1. Introduction à MongoDB et au NoSQL
+## 1. Prérequis & Installation Docker
 
-**MongoDB** est une base de données NoSQL orientée documents. Elle stocke les informations sous forme de documents JSON/BSON et offre flexibilité, performance et scalabilité horizontale.
-
-Ce TP permet d’apprendre :
-- Le modèle documentaire
-- Les requêtes simples et avancées
-- Le pipeline d’agrégation
-- Les opérations CRUD
-- L’indexation
-- L’usage de Docker pour héberger MongoDB
-
-Deux bases sont utilisées :
-- `lesfilms` (fichier JSON)
-- `sample_mflix` (archive BSON)
-
----
-
-## 2. Installation et Configuration avec Docker
-
-### Lancer MongoDB
+Lancement du conteneur MongoDB :
 
 ```bash
 docker run --name mongodb -d -p 27017:27017 -v $(pwd)/data:/data/db mongo:latest
 ```
 
-### Vérifier l’état du conteneur
-
+Vérifier que le conteneur tourne :
 ```bash
 docker ps
 ```
 
 ---
 
-## 3. Importation des Données
+## 2. Jeu de données 1 : Base lesfilms (JSON)
 
-### 3.1 Importer la base lesfilms
-
-Copier le fichier JSON dans le conteneur :
+### 2.1 Importation des données
+Copier le fichier `films.json` dans le conteneur et l'importer :
 
 ```bash
 docker cp films.json mongodb:/films.json
+docker exec -it mongodb mongoimport --db lesfilms --collection films --file /films.json --jsonArray
 ```
 
-Importer les données :
+### 2.2 Requêtes de consultation
 
-```bash
-mongoimport --db lesfilms --collection films --file /films.json --jsonArray
-```
-
-### 3.2 Importer la base sample_mflix (BSON)
-
-Télécharger l’archive :
-
-```bash
-curl [https://atlas-education.s3.amazonaws.com/sampledata.archive](https://atlas-education.s3.amazonaws.com/sampledata.archive) -o sampledata.archive
-```
-
-Importer :
-
-```bash
-mongorestore --archive=sampledata.archive --port=27017
-```
-
----
-
-## 4. Requêtes sur la Base lesfilms
-
-### Vérification des données
+**1. Vérification et structure d'un document**
 ```javascript
 db.films.count()
 db.films.findOne()
 ```
 
-### Films d’action
+**2. Films d'action**
 ```javascript
+// Liste des films
 db.films.find({ genre: "Action" })
+// Nombre de films
 db.films.count({ genre: "Action" })
+```
+
+**3. Films d'action en France (1963)**
+```javascript
+// Produits en France
 db.films.find({ genre: "Action", country: "FR" })
+// En 1963
 db.films.find({ genre: "Action", country: "FR", year: 1963 })
 ```
 
-### Projections
-
-**Sans grades :**
+**4. Projections (Affichage sélectif)**
 ```javascript
+// Sans les grades
 db.films.find({ genre: "Action", country: "FR" }, { grades: 0 })
-```
-
-**Sans identifiant :**
-```javascript
+// Sans l'identifiant (_id) (Note: mettre _id:0 masque l'ID)
 db.films.find({ genre: "Action", country: "FR" }, { _id: 0 })
+// Titres + Grades uniquement sans ID
+db.films.find({ genre: "Action", country: "FR" }, { _id: 0, title: 1, grades: 1 })
 ```
 
-**Titres + grades :**
+**5. Recherche sur les notes (Tableaux)**
 ```javascript
+// Au moins une note > 10 (Attention: affiche le film même si une autre note est < 10)
 db.films.find(
-  { genre: "Action", country: "FR" },
-  { _id: 0, title: 1, grades: 1 }
+    { "grades.note": { $gt: 10 } },
+    { _id: 0, title: 1, grades: 1 }
+)
+
+// QUE des notes > 10 (Strictement toutes les notes doivent être > 10)
+// On utilise la double négation : on ne veut PAS de note inférieure ou égale à 10
+db.films.find(
+    { grades: { $not: { $elemMatch: { note: { $lte: 10 } } } } },
+    { _id: 0, title: 1, grades: 1 }
 )
 ```
 
-### Notes supérieures à 10
-
-**Au moins une note supérieure à 10 :**
+**6. Requêtes diverses**
 ```javascript
-db.films.find(
-  { "grades.note": { $gt: 10 } },
-  { _id: 0, title: 1, grades: 1 }
-)
-```
-
-**Toutes les notes strictement supérieures à 10 :**
-```javascript
-db.films.find(
-  { grades: { $not: { $elemMatch: { note: { $lte: 10 } } } } },
-  { _id: 0, title: 1, grades: 1 }
-)
-```
-
-### Autres requêtes
-
-**Genres distincts :**
-```javascript
+// Afficher les différents genres présents
 db.films.distinct("genre")
-```
 
-**Films sans résumé :**
-```javascript
-db.films.find({ summary: { $exists: false } }, { title: 1 })
-```
+// Afficher les différents grades attribués
+db.films.distinct("grades.note")
 
-**Films avec Leonardo DiCaprio en 1997 :**
-```javascript
+// Films avec artistes spécifiques (exemple avec liste d'IDs)
+db.films.find({ actors: { $in: ["artist:4", "artist:18", "artist:11"] } })
+
+// Films sans résumé
+db.films.find({ summary: { $exists: false } })
+
+// Films avec Leonardo DiCaprio en 1997
 db.films.find({
-  "actors.first_name": "Leonardo",
-  "actors.last_name": "DiCaprio",
-  year: 1997
+    "actors.first_name": "Leonardo",
+    "actors.last_name": "DiCaprio",
+    year: 1997
 })
-```
 
-**Films avec DiCaprio ou en 1997 :**
-```javascript
+// DiCaprio OU 1997
 db.films.find({
-  $or: [
-    { "actors.first_name": "Leonardo", "actors.last_name": "DiCaprio" },
-    { year: 1997 }
-  ]
+    $or: [
+        { "actors.first_name": "Leonardo", "actors.last_name": "DiCaprio" },
+        { year: 1997 }
+    ]
 })
 ```
 
 ---
 
-## 5. Requêtes sur la Base sample_mflix
+## 3. Jeu de données 2 : Base sample_mflix (BSON)
 
-**Films récents (depuis 2015) :**
+### 3.1 Importation des données
+Télécharger et restaurer l'archive BSON :
+
+```bash
+# Téléchargement
+curl [https://atlas-education.s3.amazonaws.com/sampledata.archive](https://atlas-education.s3.amazonaws.com/sampledata.archive) -o sampledata.archive
+
+# Restauration (mongorestore est nécessaire pour le BSON)
+mongorestore --archive=sampledata.archive --port=27017
+```
+
+### 3.2 Partie 1 : Filtrage et Projections
+
+**1. 5 films sortis depuis 2015**
 ```javascript
 db.movies.find({ year: { $gte: 2015 } }).limit(5)
 ```
 
-**Films Comedy :**
+**2. Films du genre "Comedy"**
 ```javascript
 db.movies.find({ genres: "Comedy" })
 ```
 
-**Films entre 2000 et 2005 :**
+**3. Films entre 2000 et 2005**
 ```javascript
 db.movies.find(
-  { year: { $gte: 2000, $lte: 2005 } },
-  { title: 1, year: 1 }
+    { year: { $gte: 2000, $lte: 2005 } },
+    { title: 1, year: 1 }
 )
 ```
 
-**Films Drama et Romance :**
+**4. Films "Drama" ET "Romance"**
 ```javascript
 db.movies.find({ genres: { $all: ["Drama", "Romance"] } })
 ```
 
-**Films sans champ rated :**
+**5. Films sans champ `rated`**
 ```javascript
-db.movies.find({ rated: { $exists: false } })
+db.movies.find({ rated: { $exists: false } }, { title: 1 })
 ```
 
----
+### 3.3 Partie 2 : Pipeline d'Agrégation
 
-## 6. Agrégations MongoDB
-
-**Nombre de films par année :**
+**6. Nombre de films par année**
 ```javascript
 db.movies.aggregate([
-  { $group: { _id: "$year", total: { $sum: 1 } } },
-  { $sort: { _id: 1 } }
+    { $group: { _id: "$year", total: { $sum: 1 } } },
+    { $sort: { _id: 1 } }
 ])
 ```
 
-**Moyenne IMDb par genre :**
+**7. Moyenne IMDb par genre**
 ```javascript
 db.movies.aggregate([
-  { $unwind: "$genres" },
-  { $group: { _id: "$genres", moyenne: { $avg: "$imdb.rating" } } },
-  { $sort: { moyenne: -1 } }
+    { $unwind: "$genres" },
+    { $group: { _id: "$genres", moyenne: { $avg: "$imdb.rating" } } },
+    { $sort: { moyenne: -1 } }
 ])
 ```
 
-**Nombre de films par pays :**
+**8. Nombre de films par pays**
 ```javascript
 db.movies.aggregate([
-  { $unwind: "$countries" },
-  { $group: { _id: "$countries", total: { $sum: 1 } } },
-  { $sort: { total: -1 } }
+    { $unwind: "$countries" },
+    { $group: { _id: "$countries", total: { $sum: 1 } } },
+    { $sort: { total: -1 } }
 ])
 ```
 
-**Top 5 des réalisateurs :**
+**9. Top 5 réalisateurs**
 ```javascript
 db.movies.aggregate([
-  { $unwind: "$directors" },
-  { $group: { _id: "$directors", total: { $sum: 1 } } },
-  { $sort: { total: -1 } },
-  { $limit: 5 }
+    { $unwind: "$directors" },
+    { $group: { _id: "$directors", total: { $sum: 1 } } },
+    { $sort: { total: -1 } },
+    { $limit: 5 }
 ])
 ```
 
----
+**10. Films triés par note IMDb (Projection après tri)**
+```javascript
+db.movies.aggregate([
+    { $sort: { "imdb.rating": -1 } },
+    { $project: { title: 1, "imdb.rating": 1 } }
+])
+```
 
-## 7. Opérations de Mise à Jour
+### 3.4 Partie 3 : Mises à jour (Updates)
 
-**Ajouter un champ :**
+**11. Ajouter un champ `etat`**
 ```javascript
 db.movies.updateOne({ title: "Jaws" }, { $set: { etat: "culte" } })
 ```
 
-**Incrémenter un champ :**
+**12. Incrémenter les votes IMDb (+100)**
 ```javascript
 db.movies.updateOne({ title: "Inception" }, { $inc: { "imdb.votes": 100 } })
 ```
 
-**Supprimer un champ :**
+**13. Supprimer le champ `poster` pour tous les films**
 ```javascript
 db.movies.updateMany({}, { $unset: { poster: "" } })
 ```
 
-**Modifier un réalisateur :**
+**14. Modifier le réalisateur**
 ```javascript
 db.movies.updateOne(
-  { title: "Titanic" },
-  { $set: { directors: ["James Cameron"] } }
+    { title: "Titanic" },
+    { $set: { directors: ["James Cameron"] } }
 )
 ```
 
----
+### 3.5 Partie 4 : Requêtes Complexes
 
-## 8. Indexation et Analyse de Performances
+**15. Films les mieux notés par décennie**
+*Utilisation de l'arithmétique pour grouper par tranches de 10 ans.*
+```javascript
+db.movies.aggregate([
+    { $match: { "imdb.rating": { $exists: true } } },
+    { $project: {
+        title: 1,
+        decade: { $subtract: ["$year", { $mod: ["$year", 10] }] },
+        "imdb.rating": 1
+    }},
+    { $group: { _id: "$decade", maxRating: { $max: "$imdb.rating" } } },
+    { $sort: { _id: 1 } }
+])
+```
 
-**Créer un index :**
+**16. Titres commençant par "Star" (Regex)**
+```javascript
+db.movies.find({ title: /^Star/ }, { title: 1 })
+```
+
+**17. Films avec plus de 2 genres ($where)**
+```javascript
+db.movies.find({ $where: "this.genres.length > 2" }, { title: 1, genres: 1 })
+```
+
+**18. Films de Christopher Nolan**
+```javascript
+db.movies.find(
+    { directors: "Christopher Nolan" },
+    { title: 1, year: 1, "imdb.rating": 1 }
+)
+```
+
+### 3.6 Partie 5 : Indexation & Performance
+
+**19. Créer un index sur l'année**
 ```javascript
 db.movies.createIndex({ year: 1 })
 ```
 
-**Afficher les index existants :**
+**20. Vérifier les index existants**
 ```javascript
 db.movies.getIndexes()
 ```
 
-**Analyser l’exécution :**
+**21. Analyser la performance (Explain)**
+*Comparer le "totalDocsExamined" et "executionTimeMillis" avec et sans index.*
 ```javascript
 db.movies.find({ year: 1995 }).explain("executionStats")
 ```
 
-**Supprimer un index :**
+**22. Supprimer un index**
 ```javascript
 db.movies.dropIndex({ year: 1 })
 ```
 
-**Créer un index composé :**
+**23. Créer un index composé (Année + Note)**
 ```javascript
 db.movies.createIndex({ year: 1, "imdb.rating": -1 })
 ```
 
 ---
 
-## 9. Arrêt du Serveur MongoDB
+## 4. Nettoyage
+
+Arrêter et supprimer le conteneur à la fin du TP :
 
 ```bash
 docker stop mongodb
 docker rm mongodb
 ```
-
----
-
-## 10. Conclusion
-MongoDB est une solution flexible et performante pour manipuler des données semi-structurées.
