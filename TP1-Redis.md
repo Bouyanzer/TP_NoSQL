@@ -1,13 +1,3 @@
-## 📑 Table des Matières
-1. [Introduction au NoSQL et à Redis](#1-introduction-au-nosql-et-à-redis)
-2. [Installation et Configuration](#2-installation-et-configuration)
-3. [Les Bases : Manipulations Clés-Valeurs (CRUD)](#3-les-bases--manipulations-clés-valeurs-crud)
-4. [Structures de Données Avancées](#4-structures-de-données-avancées)
-5. [Fonctionnalités Avancées : Pub/Sub](#5-fonctionnalités-avancées--pubsub)
-6. [Administration et Gestion des Bases](#6-administration-et-gestion-des-bases)
-7. [Persistance et Performance](#7-persistance-et-performance)
-
----
 
 ## 1. Introduction au NoSQL et à Redis
 
