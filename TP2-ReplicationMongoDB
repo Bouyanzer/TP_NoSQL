@@ -631,15 +631,4 @@ rs.status()               // voir l’arbitre dans la configuration
 
 ---
 
-## 10. Conclusion
 
-Ce TP a permis de :
-
-1. **Mettre en place** un replica set MongoDB sur une seule machine à l’aide de ports et de répertoires distincts.
-2. Comprendre et observer :
-   - la **réplication asynchrone** des données,
-   - la **cohérence forte** garantie par les lectures/écritures sur le primary,
-   - le risque de **lecture obsolète** sur les secondaries,
-   - l’**impossibilité d’écrire sur un secondary**,
-   - le fonctionnement d’une **élection automatique** de primary en cas de panne,
-   - le rôle d’un **arbitre** pour aider à atteindre la majorité et éviter les problèmes de split-brain.
