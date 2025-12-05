@@ -1,258 +1,632 @@
 
-# Rapport de TP — Mise en place d’un Replica Set MongoDB
+  # Rapport de TP — Mise en place d’un Replica Set MongoDB
 
-## 🎯 1. Objectif du TP
+  ## 1. Objectif du TP
 
-Ce TP a pour but d’apprendre à :
+  L’objectif de ces manipulations est de :
 
-- Mettre en place un **cluster MongoDB** utilisant un **replica set**.  
-- Comprendre :
-  - la réplication **Primary / Secondary**,
-  - la réaction du cluster en cas de **panne** d'un nœud,
-  - les règles de **lecture** depuis un secondary,
-  - l’ajout et l’utilité d’un **arbitre** (*arbiter*).
+  - Mettre en place un **cluster MongoDB** basé sur un **replica set** (grappe de serveurs répliqués).
+  - Comprendre :
+    - la réplication **primary / secondary** (maître / esclaves),
+    - le comportement en cas de **panne** du primaire,
+    - la **lecture** depuis un nœud secondaire,
+    - le rôle d’un **arbitre** (*arbiter*) dans les élections de primaire.
 
-Toutes les manipulations sont réalisées localement en simulant plusieurs serveurs à l’aide de **ports différents** et **répertoires séparés**.
+  Les manipulations sont faites sur une seule machine en simulant plusieurs serveurs à l’aide de **ports différents** et **répertoires de données distincts**.
 
----
+  ---
 
-## 🧠 2. Rappels théoriques sur la réplication MongoDB
+  ## 2. Rappels théoriques sur la réplication MongoDB
 
-### 2.1. Communication entre nœuds  
-Les nœuds échangent constamment des messages (heartbeats, synchronisation…), permettant :
+  ### 2.1. Cluster de nœuds et échanges de messages
 
-- la réplication des données,  
-- la détection des pannes,  
-- la cohérence globale du cluster.
+  Dans un cluster (une grappe de serveurs) :
 
----
+  - Tous les **nœuds** (serveurs MongoDB) sont **connectés** entre eux.
+  - Ils échangent en permanence des **messages** (heartbeats, confirmations, données répliquées, etc.).
 
-### 2.2. Panne d’un Secondary  
-Si un secondary tombe :
+  Cela permet :
 
-- le primary détecte l’absence de heartbeat,  
-- il marque le nœud comme inactif,  
-- la charge est répartie entre les autres nœuds.
+  - de **répliquer les données**,
+  - de **vérifier l’état** des nœuds (vivant / en panne),
+  - de garder le système **cohérent** et **réactif**.
 
----
+  ---
 
-### 2.3. Panne du Primary et élection  
-Si le primary tombe :
+  ### 2.2. Panne d’un esclave (secondary)
 
-- une **élection automatique** se déclenche,  
-- les secondary négocient pour élire un nouveau primary,  
-- ceci repose sur des algorithmes de consensus (Raft, Paxos…).
+  Si un **nœud secondaire** tombe en panne :
 
----
+  - Le **primaire** détecte l’absence de réponse (time-out, absence de heartbeat).
+  - Il marque alors ce nœud comme **inactif**.
+  - La charge peut être **réaffectée** à d’autres nœuds.
 
-### 2.4. Problème de partition réseau (split-brain)  
-Si le cluster est coupé en deux groupes isolés :
+  Ce mécanisme fait partie de la **tolérance aux pannes**.
 
-- les deux parties pourraient élire un primary → incohérence,  
-- MongoDB empêche cela via la **règle de majorité** :  
-  **seul le groupe majoritaire peut élire un primary.**
+  ---
 
----
+  ### 2.3. Panne du maître (primary) et élection
 
-### 2.5. Architecture Primary / Secondary  
-Règles par défaut :
+  Si c’est le **maître** (primary) qui tombe en panne :
 
-- **Écriture → uniquement sur le primary**,  
-- **Lecture → sur le primary** (cohérence forte),  
-- Lectures possibles sur secondary → risque de données obsolètes.
+  - Le système ne peut plus fonctionner normalement, car :
+    - toutes les **écritures** passent par le primary,
+    - la **coordination** du cluster dépend de lui.
+  - Un processus d’**élection automatique** est alors déclenché :
+    - les nœuds restants **négocient** pour élire un nouveau primary,
+    - ce processus s’appuie sur des algorithmes de **consensus** (type Paxos, Raft, etc. – principe général).
 
----
+  Le système est donc capable de **se réorganiser** sans intervention humaine, tant qu’une **majorité** de nœuds est disponible.
 
-### 2.6. Réplication asynchrone et journal  
-Processus :
+  ---
 
-1. Écriture du client sur le primary,  
-2. Stockage dans le **journal (log)**,  
-3. Accusé de réception,  
-4. Réplication vers les secondary ensuite.
+  ### 2.4. Problème de partition réseau (split-brain)
 
----
+  Imaginons que le cluster soit **coupé en deux groupes** qui ne peuvent plus communiquer :
 
-## ⚙️ 3. Mise en place du Replica Set
+  - Chaque groupe pourrait croire que l’autre est **en panne**.
+  - Chaque groupe pourrait tenter d’**élire son propre primary**.
+  - On obtiendrait alors **deux primaries simultanés** → incohérent et inacceptable.
 
-### 3.1. Paramètres utilisés
+  Pour éviter cela, MongoDB adopte une règle :  
+  **seule la partie qui possède la majorité des nœuds peut élire un primary et continuer à fonctionner.**
 
-| Élément | Valeur |
-|--------|--------|
-| Nom du replica set | `monReplicaSet` |
-| Ports | 27018, 27019, 27020 |
-| Répertoires | disque1, disque2, disque3 |
+  L’autre partie reste **inactive** (mode dégradé) jusqu’au rétablissement du réseau.
 
----
+  ---
 
-### 3.2. Création des répertoires
+  ### 2.5. Architecture MongoDB : primary / secondary
 
-```bash
-mkdir disque1 disque2 disque3
-```
+  MongoDB repose sur une architecture de type :
 
----
+  - **Primary / Secondary** (équivalent maître / esclaves).
 
-### 3.3. Démarrage des 3 serveurs MongoDB
+  Règles par défaut :
 
-```bash
-mongod --replSet monReplicaSet --port 27018 --dbpath disque1
-mongod --replSet monReplicaSet --port 27019 --dbpath disque2
-mongod --replSet monReplicaSet --port 27020 --dbpath disque3
-```
+  - **Écritures** : toujours sur le **primary**.
+  - **Lectures** :
+    - par défaut, également sur le primary → **forte cohérence**,
+    - possibilité de lire sur les **secondaries** pour répartir la charge, au prix du risque de **données légèrement en retard** (réplication asynchrone).
 
----
+  ---
 
-## 🚀 4. Initialisation du Replica Set
+  ### 2.6. Réplication asynchrone et journal (oplog / journal log)
 
-### 4.1. Connexion au premier nœud
+  MongoDB utilise une **réplication asynchrone** :
 
-```bash
-mongo --port 27018
-```
+  1. Le client envoie une **écriture** au primary.
+  2. Le primary écrit l’opération dans son **journal** (log séquentiel) sur disque.
+  3. Le primary envoie un **accusé de réception** (ack) au client.
+  4. Ensuite seulement, l’opération est **répliquée** vers les secondaries.
 
-### 4.2. Initialisation
+  Conséquence :
 
-```javascript
-rs.initiate()
-```
+  - Un secondary peut, pendant un court instant, **ne pas encore avoir** la dernière modification.
+  - Lire sur un secondary implique un risque de **donnée obsolète**.
 
-### 4.3. Ajout des autres membres
+  L’écriture dans le **journal** est séquentielle → très efficace en termes de performance (pas de nombreux déplacements de tête sur disque).
 
-```javascript
-rs.add("localhost:27019")
-rs.add("localhost:27020")
-```
+  ---
 
----
+  ## 3. Mise en place du Replica Set (cluster de 3 nœuds)
 
-## 📊 5. Inspection du Replica Set
+  Nous allons simuler un replica set de **3 serveurs** MongoDB sur une seule machine.
 
-### 5.1. Configuration (statique)
+  ### 3.1. Paramètres choisis
 
-```javascript
-rs.config()
-```
+  - Nom du replica set :  
+    ```text
+    monReplicaSet
+    ```
+  - Ports d’écoute :
+    - Serveur 1 : `27018`
+    - Serveur 2 : `27019`
+    - Serveur 3 : `27020`
+  - Répertoires de données :
+    - `disque1`
+    - `disque2`
+    - `disque3`
 
-### 5.2. État en temps réel (dynamique)
+  ### 3.2. Création des répertoires de données
 
-```javascript
-rs.status()
-```
+  Dans un terminal (bash) :
 
-### 5.3. Vérifier si on est connecté au primary
+  ```bash
+  mkdir disque1
+  mkdir disque2
+  mkdir disque3
+  ```
 
-```javascript
-db.isMaster()
-```
+  Chaque répertoire servira de **dbPath** pour une instance de `mongod`.
 
----
+  ---
 
-## 🧪 6. Manipulations de données
+  ### 3.3. Démarrage des trois serveurs MongoDB
 
-### 6.1. Sur le primary (27018)
+  On démarre 3 instances de `mongod`, chacune avec :
 
-```bash
-mongo --port 27018
-```
+  - le même **nom de replica set** (`--replSet monReplicaSet`),
+  - un **port différent**,
+  - un **dbPath** différent.
 
-#### Création base + collection :
+  #### Serveur 1 (nœud 1)
 
-```javascript
-use demo1
-db.createCollection("person")
-```
+  ```bash
+  mongod --replSet monReplicaSet --port 27018 --dbpath disque1
+  ```
 
-#### Insertion :
+  #### Serveur 2 (nœud 2)
 
-```javascript
-db.person.insert({ nom: "Dupont" })
-db.person.insert({ nom: "Durand" })
-db.person.insert({ nom: "Codard" })
-```
+  ```bash
+  mongod --replSet monReplicaSet --port 27019 --dbpath disque2
+  ```
 
----
+  #### Serveur 3 (nœud 3)
 
-### 6.2. Sur un secondary (27019)
+  ```bash
+  mongod --replSet monReplicaSet --port 27020 --dbpath disque3
+  ```
 
-Connexion :
+  Remarque :  
+  Le fait d’avoir `--replSet monReplicaSet` **ne crée pas encore** le replica set, cela indique seulement que ces serveurs sont **prêts** à rejoindre ce replica set.  
+  L’initialisation se fait via le **shell Mongo**, avec la commande `rs.initiate()`.
 
-```bash
-mongo --port 27019
-```
+  ---
 
-#### Lecture non autorisée :
+  ## 4. Initialisation du Replica Set
 
-```
-not master and slaveOk=false
-```
+  ### 4.1. Connexion au premier nœud (qui deviendra primary)
 
-#### Autoriser la lecture :
+  On se connecte au nœud sur le port `27018` avec le client `mongo` :
 
-```javascript
-rs.slaveOk()
-db.person.find()
-```
+  ```bash
+  mongo --port 27018
+  ```
 
-#### Écriture impossible :
+  Une fois dans le shell Mongo, on initialise le replica set :
 
-```javascript
-db.person.insert({ nom: "Martin" })
-// not master
-```
+  ```javascript
+  rs.initiate()
+  ```
 
----
+  MongoDB :
 
-## 🔥 7. Simulation d’une panne du Primary
+  - crée la configuration de base du replica set,
+  - désigne ce nœud comme **primary** (s’il est le seul au début),
+  - passe le cluster en état opérationnel.
 
-### 7.1. Arrêt du primary
+  ---
 
-```bash
-Ctrl + C
-```
+  ### 4.2. Ajout des autres nœuds au Replica Set
 
-### 7.2. Nouveau primary
+  On ajoute ensuite les deux autres nœuds (`27019` et `27020`) en restant dans le shell connecté au primary :
 
-```bash
-mongo --port 27019
-rs.status()
-db.person.find()
-```
+  ```javascript
+  rs.add("localhost:27019")
+  rs.add("localhost:27020")
+  ```
 
----
+  Chaque fois qu’on fait `rs.add`, on voit dans les terminaux des autres serveurs des messages d’échange (sync, heartbeat, etc.).
 
-## 🛡️ 8. Ajout d’un arbitre
+  Le nœud `27018` reste primary, et les nœuds `27019` et `27020` deviennent **secondaries**.
 
-### 8.1. Répertoire :
+  ---
 
-```bash
-mkdir arbitre1
-```
+  ## 5. Vérification de la configuration et de l’état du cluster
 
-### 8.2. Démarrage :
+  ### 5.1. `rs.config()` : configuration statique
 
-```bash
-mongod --replSet monReplicaSet --port 27021 --dbpath arbitre1
-```
+  Dans le shell Mongo (sur le primary) :
 
-### 8.3. Ajout au Replica Set :
+  ```javascript
+  rs.config()
+  ```
 
-```javascript
-rs.addArb("localhost:27021")
-```
+  Cette commande affiche la **configuration du replica set**, par exemple :
 
----
+  ```javascript
+  {
+    "_id" : "monReplicaSet",
+    "version" : 1,
+    "members" : [
+      {
+        "_id" : 0,
+        "host" : "localhost:27018",
+        "priority" : 1,
+        "votes" : 1
+      },
+      {
+        "_id" : 1,
+        "host" : "localhost:27019",
+        "priority" : 1,
+        "votes" : 1
+      },
+      {
+        "_id" : 2,
+        "host" : "localhost:27020",
+        "priority" : 1,
+        "votes" : 1
+      }
+    ]
+  }
+  ```
 
-## ✔️ 10. Conclusion
+  Champs importants :
 
-Ce TP permet de comprendre :
+  - `_id` (au niveau racine) : nom du replica set (ex. `monReplicaSet`).
+  - `version` : version de la configuration (incrémentée à chaque modification).
+  - `members` : tableau des nœuds.
 
-- le fonctionnement d’un replica set MongoDB,  
-- la réplication asynchrone,  
-- la gestion de panne et l’élection automatique,  
-- l’usage d’un arbitre pour maintenir la majorité.
+  Pour chaque **member** :
 
-MongoDB fournit ainsi haute disponibilité et tolérance aux pannes.
+  - `member._id` : identifiant numérique du nœud (0, 1, 2, …).
+  - `member.host` : adresse + port (ex. `localhost:27019`).
+  - `member.priority` :
+    - plus elle est élevée, plus ce nœud a de chance d’être élu primary,
+    - si `priority: 0`, ce nœud **ne sera jamais primary**.
+  - `member.votes` :
+    - indique si le nœud participe ou non au vote,
+    - `votes: 0` → nœud ne vote pas (cas d’un arbitre par exemple).
+  - `slaveDelay` (si configuré) :
+    - délai artificiel de réplication pour simuler un nœud en retard.
 
+  `rs.config()` donne une **vue statique** : la configuration que l’on a définie.
 
+  ---
 
+  ### 5.2. `rs.status()` : état dynamique des nœuds
+
+  Toujours dans le shell :
+
+  ```javascript
+  rs.status()
+  ```
+
+  Cette commande donne l’état **en temps réel** de chaque membre :
+
+  - `name` : nom du nœud (`localhost:27018`, …),
+  - `stateStr` : état (`PRIMARY`, `SECONDARY`, `ARBITER`, `DOWN`, etc.),
+  - `health` :
+    - `1` → nœud en ligne,
+    - `0` → nœud hors ligne / inaccessible,
+  - `uptime` : durée de fonctionnement depuis le dernier démarrage,
+  - `optimeDate` : date de la dernière opération répliquée.
+
+  `rs.status()` est très utile pour :
+
+  - voir **qui est primary**,
+  - vérifier si les secondary sont **synchronisés**,
+  - diagnostiquer des **problèmes de réplication**.
+
+  ---
+
+  ### 5.3. Savoir si le nœud courant est primary ou secondary
+
+  Dans le shell, on peut aussi utiliser une commande qui renvoie si le nœud actuel est primary ou non, par exemple :
+
+  ```javascript
+  db.isMaster()
+  ```
+
+  Les informations retournées permettent de savoir :
+
+  - si le nœud est **primary** (`ismaster: true`) ou **secondary** (`secondary: true`),
+  - la liste des membres, etc.
+
+  (Utile côté client pour savoir à quelle sorte de nœud il est connecté.)
+
+  ---
+
+  ## 6. Manipulation de données pour observer la réplication
+
+  On va maintenant créer une **base de données** et une **collection** sur le primary, y insérer des documents, puis observer leur réplication sur un secondary.
+
+  ### 6.1. Sur le primary (port 27018)
+
+  Connexion :
+
+  ```bash
+  mongo --port 27018
+  ```
+
+  #### 6.1.1. Choix / création de la base
+
+  ```javascript
+  use demo1   // ou "demo" selon l’exemple
+  ```
+
+  #### 6.1.2. Création d’une collection
+
+  ```javascript
+  db.createCollection("person")
+  ```
+
+  #### 6.1.3. Insertion de documents
+
+  Exemple de trois documents insérés :
+
+  ```javascript
+  db.person.insert({ nom: "Dupont" })
+  db.person.insert({ nom: "Durand" })
+  db.person.insert({ nom: "Codard" })
+  ```
+
+  Vérification de la présence des documents :
+
+  ```javascript
+  db.person.find()
+  ```
+
+  Résultat : les 3 documents apparaissent.  
+  On lit donc et on écrit **sur le primary**.
+
+  Rappel : par défaut, MongoDB :
+
+  - accepte les **écritures** seulement sur le primary,
+  - et effectue aussi les **lectures** sur le primary, ce qui garantit une **cohérence forte**.
+
+  ---
+
+  ### 6.2. Sur un secondary (port 27019)
+
+  Connexion :
+
+  ```bash
+  mongo --port 27019
+  ```
+
+  #### 6.2.1. Tentative de lecture sans autorisation
+
+  On se place sur la même base :
+
+  ```javascript
+  use demo1
+  show collections
+  ```
+
+  Par défaut, on obtient un message du type :
+
+  > not master and slaveOk=false  
+
+  Cela signifie :
+
+  - Ce nœud est un **secondary**,
+  - par défaut, MongoDB **refuse les lectures** sur les secondaries pour éviter que les applications récupèrent des données possiblement **non à jour**.
+
+  ---
+
+  #### 6.2.2. Autoriser la lecture sur un secondary
+
+  Pour forcer la lecture sur un secondary depuis le shell, on active un mode “ok pour lire” :
+
+  ```javascript
+  rs.slaveOk()      // ancienne forme (dépréciée dans certaines versions)
+  ```
+
+  Dans les versions plus récentes, c’est `rs.secondaryOk()` ou une configuration de **read preference** côté client, mais l’idée montrée est : *on indique explicitement qu’on accepte de lire sur un secondary*.
+
+  Ensuite :
+
+  ```javascript
+  db.person.find()
+  ```
+
+  On obtient les **mêmes documents** insérés sur le primary (`Dupont`, `Durand`, `Codard`) → la réplication a bien eu lieu.
+
+  Points à retenir :
+
+  1. Les **données ont été insérées sur le primary** (`27018`) mais sont visibles sur le **secondary** (`27019`) après réplication.
+  2. On **ne peut lire sur un secondary** que si on *accepte explicitement* le risque de lire des données en retard, via `rs.slaveOk()` / `rs.secondaryOk()` ou via un **read preference** approprié côté driver (Java, Python, etc.).
+  3. **On ne peut jamais écrire sur un secondary**.
+
+  ---
+
+  #### 6.2.3. Tentative d’écriture sur un secondary
+
+  Toujours sur le secondary :
+
+  ```javascript
+  db.person.insert({ nom: "Martin" })
+  ```
+
+  MongoDB répond avec une erreur du type :
+
+  > not master
+
+  → confirmation : **toutes les écritures doivent passer par le primary**.
+
+  ---
+
+  ## 7. Simulation d’une panne du primary et élection
+
+  Nous allons maintenant simuler la **panne** du primary (`27018`) et observer comment un secondary devient le nouveau primary.
+
+  ### 7.1. Arrêt brutal du primary
+
+  Dans le terminal où tourne `mongod` sur `27018`, on interrompt le processus :
+
+  ```bash
+  Ctrl + C
+  ```
+
+  Le serveur 1 s’arrête.  
+  On observe dans les terminaux des serveurs 2 et 3 (`27019` et `27020`) qu’ils se “réveillent” :
+
+  - échanges de messages,
+  - journalisation d’une **élection** pour choisir un nouveau primary.
+
+  ---
+
+  ### 7.2. Connexion à l’ancien primary
+
+  Si on essaie de se connecter à `27018` :
+
+  ```bash
+  mongo --port 27018
+  ```
+
+  On obtient une erreur de connexion → le serveur est arrêté, c’est normal.
+
+  ---
+
+  ### 7.3. Connexion au new primary (par exemple 27019)
+
+  On se connecte alors au nœud `27019` :
+
+  ```bash
+  mongo --port 27019
+  ```
+
+  En consultant `rs.status()` ou `db.isMaster()`, on peut constater que :
+
+  - `27019` est maintenant **PRIMARY**.
+
+  On vérifie que les données sont toujours là :
+
+  ```javascript
+  use demo1
+  db.person.find()
+  ```
+
+  Les documents insérés auparavant sont toujours présents →  
+  Les secondaries avaient déjà les données répliquées, donc le nouveau primary reprend **sans perte de données** (sauf cas très particulier).
+
+  ---
+
+  ### 7.4. Comportement du third node (27020)
+
+  Le nœud `27020` reste secondary.
+
+  - On peut s’y connecter,
+  - utiliser `rs.secondaryOk()` si on veut y lire,
+  - et constater qu’il réplique maintenant à partir du **nouveau primary** (`27019`).
+
+  ---
+
+  ## 8. Ajout d’un nœud arbitre (arbiter)
+
+  Pour améliorer la gestion des **élections** dans certaines configurations (notamment quand on a un nombre pair de nœuds de données), MongoDB propose des **arbitres** :
+
+  - ce sont des nœuds qui **ne stockent pas de données**,
+  - ils **participent au vote** pour atteindre la **majorité**,
+  - ils ne deviennent **jamais primary**.
+
+  ### 8.1. Création du répertoire de données de l’arbitre
+
+  Même s’il ne stocke pas les données applicatives, l’arbitre a besoin d’un **répertoire** pour ses propres métadonnées.
+
+  ```bash
+  mkdir arbitre1
+  ```
+
+  ### 8.2. Démarrage du serveur arbiter
+
+  On démarre un `mongod` supplémentaire, toujours dans le même replica set, mais sur un **autre port** (par exemple 27021) :
+
+  ```bash
+  mongod --replSet monReplicaSet --port 27021 --dbpath arbitre1
+  ```
+
+  ### 8.3. Ajout de l’arbitre au Replica Set
+
+  Depuis le primary (par exemple `27019` après la panne) :
+
+  ```bash
+  mongo --port 27019
+  ```
+
+  On ajoute l’arbitre :
+
+  ```javascript
+  rs.addArb("localhost:27021")
+  ```
+
+  À partir de ce moment :
+
+  - L’arbitre apparaît dans `rs.status()` avec l’état `ARBITER`.
+  - Il **vote** lors des élections, mais il ne contient pas les données de vos collections.
+  - Son but est d’aider à maintenir une **majorité de votes** pour élire un primary, notamment en cas de partition réseau.
+
+  ---
+
+  ## 9. Synthèse des commandes principales utilisées
+
+  ### 9.1. Démarrage des nœuds
+
+  ```bash
+  mongod --replSet monReplicaSet --port 27018 --dbpath disque1
+  mongod --replSet monReplicaSet --port 27019 --dbpath disque2
+  mongod --replSet monReplicaSet --port 27020 --dbpath disque3
+  ```
+
+  ### 9.2. Initialisation et configuration du Replica Set
+
+  ```bash
+  mongo --port 27018           # connexion client
+  ```
+
+  ```javascript
+  rs.initiate()                // initialisation du replica set
+  rs.add("localhost:27019")    // ajout d’un second nœud
+  rs.add("localhost:27020")    // ajout d’un troisième nœud
+
+  rs.config()                  // configuration statique
+  rs.status()                  // état dynamique des nœuds
+  db.isMaster()                // savoir si le nœud est primary
+  ```
+
+  ### 9.3. Manipulation de données
+
+  Sur le primary :
+
+  ```javascript
+  use demo1
+  db.createCollection("person")
+  db.person.insert({ nom: "Dupont" })
+  db.person.insert({ nom: "Durand" })
+  db.person.insert({ nom: "Codard" })
+  db.person.find()
+  ```
+
+  Sur un secondary :
+
+  ```javascript
+  mongo --port 27019
+  use demo1
+  show collections          // erreur “not master and slaveOk=false”
+  rs.slaveOk()              // ou rs.secondaryOk() selon la version
+  db.person.find()          // lecture possible, données répliquées
+  db.person.insert({ nom: "Martin" })   // ERREUR : nœud non primary
+  ```
+
+  ### 9.4. Simulation de panne
+
+  Arrêt du primary :
+
+  ```bash
+  # dans le terminal du mongod 27018
+  Ctrl + C
+  ```
+
+  Connexion au nouveau primary potentiel :
+
+  ```bash
+  mongo --port 27019
+  rs.status()               // pour vérifier qu’il est PRIMARY
+  db.person.find()          // données toujours disponibles
+  ```
+
+  ### 9.5. Ajout d’un arbitre
+
+  ```bash
+  mkdir arbitre1
+  mongod --replSet monReplicaSet --port 27021 --dbpath arbitre1
+  ```
+
+  ```javascript
+  mongo --port 27019
+  rs.addArb("localhost:27021")
+  rs.status()               // voir l’arbitre dans la configuration
+  ```
+
+  ---
