@@ -1,4 +1,4 @@
-#  TP Prise en main de MongoDB
+#  TP1 - Partie 2: Prise en main de MongoDB
 ---
 
 ## 1. Prérequis & Installation Docker
