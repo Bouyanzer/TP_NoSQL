@@ -26,7 +26,7 @@ Un point important est souligné : même si le système accepte des documents �
 
 ### 2.2 Accès REST : GET, PUT, POST, DELETE
 
-D’après le rappel fait dans la vidéo, l’API REST s’appuie principalement sur quatre verbes HTTP :
+L’API REST s’appuie principalement sur quatre verbes HTTP :
 - **GET** : demander la représentation d’une ressource ;
 - **PUT** : créer une ressource (ou remplacer) ;
 - **POST** : envoyer un contenu / demander une action à une ressource ;
@@ -56,7 +56,7 @@ Cette interface permet de parcourir bases, documents, vues, pagination, etc., ma
 
 ## 3. Manipulations CouchDB : synthèse (CRUD)
 
-Dans cette section, on reformule les manipulations en mode “constat” (sans décrire la vidéo comme une suite d’actions).
+Dans cette section, on reformule les manipulations en mode “constat”.
 
 ### 3.1 Vérifier que CouchDB répond (GET)
 
@@ -64,7 +64,7 @@ D’après les tests effectués, un **GET** sur l’URL du serveur CouchDB renvo
 
 ### 3.2 Créer une base de données (PUT)
 
-D’après l’exemple, la création d’une base (ex. `films`) se fait par un **PUT** vers l’URL correspondant au nom de la base.  
+La création d’une base (ex. `films`) se fait par un **PUT** vers l’URL correspondant au nom de la base.  
 On constate que la réponse attendue est un JSON indiquant que l’opération est **OK**, ce qui signifie que la ressource “base de données” a été créée.
 
 ### 3.3 Lire les informations d’une base (GET)
@@ -87,7 +87,7 @@ Une remarque importante est donnée :
 
 ### 3.6 Documents JSON imbriqués et conséquences (redondance/incohérence)
 
-D’après l’explication, CouchDB (et les bases documentaires) autorisent des documents JSON **imbriqués**.  
+CouchDB (et les bases documentaires) autorisent des documents JSON **imbriqués**.  
 On constate une différence essentielle avec le modèle relationnel :
 - le relationnel vise à limiter la redondance (normalisation) ;
 - en documentaire, on accepte plus facilement la duplication pour simplifier l’accès local aux informations.
@@ -101,11 +101,11 @@ Après import, la base contient la collection et l’interface permet de la parc
 
 ---
 
-## 4. MapReduce : concepts (présentation accessible)
+## 4. MapReduce : concepts
 
 ### 4.1 Pourquoi MapReduce ?
 
-D’après l’explication, MapReduce sert à exécuter des calculs **parallèles** sur un grand volume de données, notamment parce que les documents (JSON) sont **indépendants** : on peut appliquer le même traitement sur chacun sans dépendance directe.
+MapReduce sert à exécuter des calculs **parallèles** sur un grand volume de données, notamment parce que les documents (JSON) sont **indépendants** : on peut appliquer le même traitement sur chacun sans dépendance directe.
 
 ### 4.2 Étape Map : transformation et émission
 
@@ -118,7 +118,7 @@ Point important : l’émission vise à préparer un regroupement par clé (équ
 
 ### 4.3 Tri / regroupement (sort & shuffle)
 
-D’après la description, une phase intermédiaire organise les résultats :
+Une phase intermédiaire organise les résultats :
 - regroupement par clé,
 - préparation à l’agrégation.
 
@@ -135,7 +135,7 @@ Particularité soulignée : dans CouchDB, la reduce peut être **optionnelle**, 
 
 ---
 
-## 5. Exemples MapReduce sur une collection de films (idée générale)
+## 5. Exemples MapReduce sur une collection de films 
 
 ### 5.1 Exemple : nombre de films par année
 
@@ -296,7 +296,7 @@ $$
 On obtient ainsi le vecteur $\varphi$ sous forme (clé = page $P_i$, valeur = $\varphi_i$).
 
 ---
-#  — Exercices 
+#  — Reponces d'exercice 
 
 Commande générale utilisée :
 
