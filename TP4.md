@@ -1,7 +1,4 @@
 
-## TP n°4 : 
-
-
 ## 1. Introduction
 
 Le **MapReduce** est présenté dans la vidéo comme un concept très utilisé en **Big Data** pour effectuer des calculs **parallèles**. L’idée générale est de traiter un grand ensemble de données (souvent des documents JSON en NoSQL) en deux étapes :
@@ -189,19 +186,19 @@ Observation sur les documents :
 
 ---
 
-## 6. Modélisation “PageRank-like” : matrice de liens web \(M\)
+## 6. Modélisation “PageRank-like” : matrice de liens web $M$
 
 ### 6.1 Problème et intuition (matrice très grande)
 
-On considère une matrice \(M\) de taille \(N \times N\) :
-- la ligne \(i\) décrit la page \(P_i\),
-- \(M_{ij}\) est le poids du lien de la page \(P_i\) vers \(P_j\) (importance du lien).
+On considère une matrice $M$ de taille $N \times N$ :
+- la ligne $i$ décrit la page $P_i$,
+- $M_{ij}$ est le poids du lien de la page $P_i$ vers $P_j$ (importance du lien).
 
-Comme \(N\) peut être très grand, on cherche une représentation en **documents structurés** (JSON), typiquement en représentation **creuse** : ne stocker que les liens existants.
+Comme $N$ peut être très grand, on cherche une représentation en **documents structurés** (JSON), typiquement en représentation **creuse** : ne stocker que les liens existants.
 
-### 6.2 Proposition de modèle documentaire (collection \(C\))
+### 6.2 Proposition de modèle documentaire (collection $C$)
 
-**Un document par page \(P_i\)** (ligne \(i\)) :
+**Un document par page $P_i$** (ligne $i$) :
 
 ```json
 {
@@ -213,40 +210,40 @@ Comme \(N\) peut être très grand, on cherche une représentation en **document
 }
 ```
 
-- `_id` identifie la page \(P_i\).
-- `links` contient la liste des liens sortants (les colonnes \(j\) où \(M_{ij} \neq 0\)).
+- `_id` identifie la page $P_i$.
+- `links` contient la liste des liens sortants (les colonnes $j$ où $M_{ij} \neq 0$).
 - chaque lien contient :
   - `to` : identifiant de la page cible,
-  - `w` : le poids \(M_{ij}\).
+  - `w` : le poids $M_{ij}$.
 
-La **collection \(C\)** est l’ensemble de ces documents.
+La **collection $C$** est l’ensemble de ces documents.
 
 ---
 
-## 7. MapReduce : calcul de la norme des vecteurs (lignes de \(M\))
+## 7. MapReduce : calcul de la norme des vecteurs (lignes de $M$)
 
-### 7.1 Rappel : norme d’un vecteur (ligne \(i\))
+### 7.1 Rappel : norme d’un vecteur (ligne $i$)
 
-La ligne \(i\) est un vecteur à \(N\) dimensions :
+La ligne $i$ est un vecteur à $N$ dimensions :
 
-\[
+$$
 V_i = (M_{i1}, M_{i2}, \dots, M_{iN})
-\]
+$$
 
 Sa norme est :
 
-\[
+$$
 \|V_i\| = \sqrt{\sum_{j=1}^{N} M_{ij}^2}
-\]
+$$
 
 Avec la représentation creuse, on somme seulement sur les liens présents dans `links`.
 
 ### 7.2 Traitement MapReduce proposé
 
 #### Fonction Map (principe)
-Pour chaque page \(P_i\), pour chaque lien \((i \to j)\) de poids \(w = M_{ij}\), on émet :
-- **clé** = \(P_i\),
-- **valeur** = \(w^2\).
+Pour chaque page $P_i$, pour chaque lien $(i \to j)$ de poids $w = M_{ij}$, on émet :
+- **clé** = $P_i$,
+- **valeur** = $w^2$.
 
 Map (JavaScript, style CouchDB) :
 
@@ -261,7 +258,7 @@ function(doc) {
 ```
 
 #### Fonction Reduce (principe)
-Pour chaque clé \(P_i\), on somme toutes les valeurs \(w^2\) :
+Pour chaque clé $P_i$, on somme toutes les valeurs $w^2$ :
 
 ```js
 function(keys, values, rereduce) {
@@ -272,32 +269,32 @@ function(keys, values, rereduce) {
 #### Interprétation du résultat
 Le reduce renvoie :
 
-\[
+$$
 S_i = \sum_j M_{ij}^2
-\]
+$$
 
 La norme s’obtient ensuite par :
 
-\[
+$$
 \|V_i\| = \sqrt{S_i}
-\]
+$$
 
 ---
 
-## 8. MapReduce : produit matrice–vecteur \(\varphi = M \cdot W\)
+## 8. MapReduce : produit matrice–vecteur $\varphi = M \cdot W$
 
 ### 8.1 Rappel : produit matrice–vecteur
 
-\[
+$$
 \varphi_i = \sum_{j=1}^{N} M_{ij} \cdot w_j
-\]
+$$
 
-Hypothèse imposée : le vecteur \(W\) tient en RAM et est accessible comme variable statique par Map/Reduce.
+Hypothèse imposée : le vecteur $W$ tient en RAM et est accessible comme variable statique par Map/Reduce.
 
 ### 8.2 Traitement MapReduce proposé
 
 #### Map (émission par lien)
-Pour chaque lien \((i \to j)\), on calcule une contribution partielle \(M_{ij} \cdot w_j\) et on l’émet avec la clé \(P_i\).
+Pour chaque lien $(i \to j)$, on calcule une contribution partielle $M_{ij} \cdot w_j$ et on l’émet avec la clé $P_i$.
 
 ```js
 // W est supposé accessible (variable statique)
@@ -324,13 +321,13 @@ function(keys, values, rereduce) {
 ```
 
 #### Résultat
-Pour chaque page \(P_i\), le reduce renvoie :
+Pour chaque page $P_i$, le reduce renvoie :
 
-\[
+$$
 \varphi_i = \sum_j (M_{ij} \cdot w_j)
-\]
+$$
 
-On obtient ainsi le vecteur \(\varphi\) sous forme (clé = page \(P_i\), valeur = \(\varphi_i\)).
+On obtient ainsi le vecteur $\varphi$ sous forme (clé = page $P_i$, valeur = $\varphi_i$).
 
 ---
 
@@ -346,3 +343,4 @@ Ce TP relie :
   - particularité CouchDB : reduce optionnelle et résultats intermédiaires visibles.
 
 Enfin, la modélisation d’une matrice de liens web sous forme de documents (un document par page) s’inscrit naturellement dans le cadre MapReduce pour effectuer des calculs de type “vecteur” (normes) et “produit scalaire” (matrice–vecteur).
+
