@@ -75,7 +75,7 @@ Commande fournie :
 mongod --configsvr --replSet replicaconfig --dbpath configsvrdb --port 27019
 ```
 
-Explication (issue de l’énoncé) :
+Explication  :
 - `mongod` : lance le serveur MongoDB ;
 - `--configsvr` : indique que ce serveur joue le rôle de **config server** dans un cluster shardé ;
 - `--replSet replicaconfig` : nom du replica set du config server ;
@@ -105,7 +105,7 @@ mongod --replSet replicashard1 --dbpath serv1/ --shardsvr --port 20004
 mongod --replSet replicashard2 --dbpath serv2/ --shardsvr --port 20005
 ```
 
-Explication (issue de l’énoncé) :
+Explication  :
 - `--replSet` : nom du replica set pour chaque shard ;
 - `--dbpath` : répertoire de stockage des données du shard ;
 - `--shardsvr` : indique que le serveur joue le rôle de shard dans un cluster ;
@@ -113,7 +113,7 @@ Explication (issue de l’énoncé) :
 
 ### 4.4 Ajout des shards au cluster
 
-Depuis le routeur mongos (commandes fournies) :
+Depuis le routeur mongos  :
 
 ```js
 sh.addShard("replicashard1/localhost:20004")
@@ -164,7 +164,7 @@ Au fur et à mesure des insertions :
 
 ---
 
-## 7. Concepts clés (rappel structuré)
+## 7. Concepts clés 
 
 ### 7.1 Clé de sharding
 
@@ -199,8 +199,7 @@ Un **hot shard** est un shard surchargé, souvent causé par une clé monotone, 
 
 ---
 
-## 9. Commandes usuelles (rappel)
-
+## 9. Commandes usuelles
 Ajouter un shard :
 ```js
 sh.addShard("replicaSet/host:port");
@@ -225,7 +224,7 @@ db.collection.stats();
 
 ---
 
-## 10. Performances et résilience (rappel)
+## 10. Performances et résilience
 
 Les requêtes multi-shards sont envoyées aux shards concernés puis **agrégées par mongos**.
 
