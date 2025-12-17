@@ -13,7 +13,7 @@ Dans ce TP, les démonstrations sont faites avec **CouchDB**, un SGBD documentai
 
 ---
 
-## 2. Présentation de CouchDB (vidéo 1)
+## 2. Présentation de CouchDB 
 
 ### 2.1 Nature du système (SGBD documentaire)
 
@@ -107,7 +107,7 @@ Après import, l’interface indique (dans l’exemple) un certain nombre de fil
 
 ---
 
-## 4. MapReduce : concepts expliqués (vidéo 2)
+## 4. MapReduce : concepts expliqués
 
 ### 4.1 Pourquoi MapReduce ?
 
