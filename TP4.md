@@ -10,7 +10,6 @@ Dans ce TP, les démonstrations sont faites avec **CouchDB**, un SGBD documentai
 - fournit une interface graphique,
 - et propose un moteur d’exécution MapReduce (en JavaScript) intégré.
 
-Le TP est réalisé **en mode centralisé** (un seul nœud) dans un premier temps.
 
 ---
 
@@ -23,7 +22,7 @@ CouchDB est présenté comme un système :
 - qui stocke des données sous forme de **documents JSON** (documents “autodécrits”),
 - accessible via une **API REST**.
 
-Le cours insiste sur l’idée suivante : même si CouchDB permet d’insérer des documents hétérogènes “sans schéma”, en pratique il existe souvent un **schéma implicite** (sinon l’exploitation des données côté application devient coûteuse et complexe).
+
 
 ### 2.2 CouchDB via API REST : les verbes HTTP
 
@@ -52,7 +51,6 @@ CouchDB propose un client graphique accessible à l’adresse :
 
 - `http://localhost:5984/_utils`
 
-La vidéo invite à explorer cette interface (affichage des bases, documents, vues, pagination, etc.), mais montre aussi que le TP peut être réalisé uniquement en ligne de commande.
 
 ---
 
