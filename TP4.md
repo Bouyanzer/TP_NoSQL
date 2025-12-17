@@ -330,6 +330,527 @@ $$
 On obtient ainsi le vecteur $\varphi$ sous forme (clé = page $P_i$, valeur = $\varphi_i$).
 
 ---
+#  — Exercices 
+
+Commande générale utilisée :
+
+```js
+db.films.mapReduce(mapFunction, reduceFunction, {
+  out: "<nom_sortie>"
+});
+```
+
+---
+
+## 1) Compter le nombre total de films dans la collection
+
+**Map**
+```js
+var mapTotalFilms = function () {
+  emit("total_films", 1);
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapTotalFilms, reduceSum, { out: "mr_total_films" });
+```
+
+---
+
+## 2) Compter le nombre de films par genre
+
+**Map**
+```js
+var mapFilmsParGenre = function () {
+  if (this.genre) {
+    this.genre.forEach(function (g) {
+      emit(g, 1);
+    });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapFilmsParGenre, reduceSum, { out: "mr_films_par_genre" });
+```
+
+---
+
+## 3) Compter le nombre de films réalisés par chaque réalisateur
+
+**Map**
+```js
+var mapFilmsParRealisateur = function () {
+  if (this.director) {
+    emit(this.director, 1);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapFilmsParRealisateur, reduceSum, { out: "mr_films_par_realisateur" });
+```
+
+---
+
+## 4) Compter le nombre d’acteurs uniques apparaissant dans tous les films
+
+Idée : on émet une fois chaque acteur comme clé ; le reduce renvoie 1 par acteur.  
+Le **nombre d’acteurs uniques** = nombre de documents dans la collection de sortie.
+
+**Map**
+```js
+var mapActeurs = function () {
+  if (this.actors) {
+    this.actors.forEach(function (a) {
+      emit(a, 1);
+    });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceUnique = function (key, values) {
+  return 1;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapActeurs, reduceUnique, { out: "mr_acteurs_uniques" });
+```
+
+**Résultat (compte des acteurs uniques)**
+```js
+db.mr_acteurs_uniques.count();
+```
+
+---
+
+## 5) Lister le nombre de films par année de sortie
+
+**Map**
+```js
+var mapFilmsParAnnee = function () {
+  if (this.year !== undefined && this.year !== null) {
+    emit(this.year, 1);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapFilmsParAnnee, reduceSum, { out: "mr_films_par_annee" });
+```
+
+---
+
+## 6) Calculer la note moyenne par film à partir du tableau `grades`
+
+On calcule la moyenne du tableau `grades` (champ `score`), puis on émet (titre → moyenne).
+
+**Map**
+```js
+var mapMoyenneParFilm = function () {
+  if (this.grades && this.grades.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      sum += this.grades[i].score;
+    }
+    var mean = sum / this.grades.length;
+    emit(this.title, mean);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceAvg = function (key, values) {
+  return Array.sum(values) / values.length;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapMoyenneParFilm, reduceAvg, { out: "mr_moyenne_par_film" });
+```
+
+---
+
+## 7) Calculer la note moyenne par genre
+
+On calcule la moyenne du film, puis on l’émet pour chacun de ses genres (genre → moyenneDuFilm).
+
+**Map**
+```js
+var mapMoyenneParGenre = function () {
+  if (this.grades && this.grades.length > 0 && this.genre) {
+    var sum = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      sum += this.grades[i].score;
+    }
+    var avgFilm = sum / this.grades.length;
+
+    this.genre.forEach(function (g) {
+      emit(g, avgFilm);
+    });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceAvg = function (key, values) {
+  return Array.sum(values) / values.length;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapMoyenneParGenre, reduceAvg, { out: "mr_moyenne_par_genre" });
+```
+
+---
+
+## 8) Calculer la note moyenne par réalisateur
+
+On calcule la moyenne du film, puis on l’émet (réalisateur → moyenneDuFilm).
+
+**Map**
+```js
+var mapMoyenneParRealisateur = function () {
+  if (this.director && this.grades && this.grades.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      sum += this.grades[i].score;
+    }
+    var avgFilm = sum / this.grades.length;
+    emit(this.director, avgFilm);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceAvg = function (key, values) {
+  return Array.sum(values) / values.length;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapMoyenneParRealisateur, reduceAvg, { out: "mr_moyenne_par_realisateur" });
+```
+
+---
+
+## 9) Trouver le film avec la note maximale la plus élevée
+
+Pour chaque film, on calcule **la note max** de son tableau `grades`, puis on garde le meilleur film global.
+
+**Map**
+```js
+var mapMaxParFilm = function () {
+  if (this.grades && this.grades.length > 0) {
+    var maxScore = this.grades[0].score;
+    for (var i = 1; i < this.grades.length; i++) {
+      if (this.grades[i].score > maxScore) maxScore = this.grades[i].score;
+    }
+    emit("best_film", { title: this.title, max: maxScore });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceBestFilm = function (key, values) {
+  var best = values[0];
+  for (var i = 1; i < values.length; i++) {
+    if (values[i].max > best.max) best = values[i];
+  }
+  return best;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapMaxParFilm, reduceBestFilm, { out: "mr_best_film" });
+```
+
+---
+
+## 10) Compter le nombre de notes supérieures à 70 dans tous les films
+
+**Map**
+```js
+var mapNotesSup70 = function () {
+  if (this.grades && this.grades.length > 0) {
+    var count = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      if (this.grades[i].score > 70) count++;
+    }
+    emit("notes_sup_70", count);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapNotesSup70, reduceSum, { out: "mr_notes_sup_70" });
+```
+
+---
+
+## 11) Lister tous les acteurs par genre, sans doublons
+
+**Map**
+```js
+var mapActeursParGenre = function () {
+  if (this.genre && this.actors) {
+    for (var i = 0; i < this.genre.length; i++) {
+      for (var j = 0; j < this.actors.length; j++) {
+        emit(this.genre[i], this.actors[j]);
+      }
+    }
+  }
+};
+```
+
+**Reduce** (déduplication robuste, y compris en cas de re-reduce)
+```js
+var reduceUniqueActorsList = function (key, values) {
+  var seen = {};
+  for (var i = 0; i < values.length; i++) {
+    var v = values[i];
+
+    if (Array.isArray(v)) {
+      for (var k = 0; k < v.length; k++) {
+        seen[v[k]] = 1;
+      }
+    } else {
+      seen[v] = 1;
+    }
+  }
+  return Object.keys(seen);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapActeursParGenre, reduceUniqueActorsList, { out: "mr_acteurs_par_genre" });
+```
+
+---
+
+## 12) Trouver les acteurs apparaissant dans le plus grand nombre de films
+
+Étape 1 : compter le nombre de films par acteur.
+
+**Map**
+```js
+var mapFilmsParActeur = function () {
+  if (this.actors) {
+    this.actors.forEach(function (a) {
+      emit(a, 1);
+    });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSum = function (key, values) {
+  return Array.sum(values);
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapFilmsParActeur, reduceSum, { out: "mr_films_par_acteur" });
+```
+
+Pour obtenir l’acteur “top” (et gérer les ex æquo) :
+```js
+var top = db.mr_films_par_acteur.find().sort({ value: -1 }).limit(1).next().value;
+db.mr_films_par_acteur.find({ value: top });
+```
+
+---
+
+## 13) Classer les films par lettre de grade majoritaire (A, B, C, …)
+
+On cherche la lettre la plus fréquente dans `grades[*].grade`, puis on groupe les films par cette lettre.
+
+**Map**
+```js
+var mapGradeMajoritaire = function () {
+  if (this.grades && this.grades.length > 0) {
+    var freq = {};
+    for (var i = 0; i < this.grades.length; i++) {
+      var g = this.grades[i].grade;
+      freq[g] = (freq[g] || 0) + 1;
+    }
+
+    var major = null;
+    for (var k in freq) {
+      if (major === null || freq[k] > freq[major]) {
+        major = k;
+      }
+    }
+
+    emit(major, this.title);
+  }
+};
+```
+
+**Reduce** (concatène et supporte les re-reduce)
+```js
+var reduceList = function (key, values) {
+  var out = [];
+  for (var i = 0; i < values.length; i++) {
+    var v = values[i];
+    if (Array.isArray(v)) out = out.concat(v);
+    else out.push(v);
+  }
+  return out;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapGradeMajoritaire, reduceList, { out: "mr_films_par_grade_majoritaire" });
+```
+
+---
+
+## 14) Calculer la note moyenne par année de sortie des films
+
+On calcule la moyenne du film, puis on l’émet (année → moyenneDuFilm).
+
+**Map**
+```js
+var mapMoyenneParAnnee = function () {
+  if (this.year !== undefined && this.year !== null && this.grades && this.grades.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      sum += this.grades[i].score;
+    }
+    var avgFilm = sum / this.grades.length;
+    emit(this.year, avgFilm);
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceAvg = function (key, values) {
+  return Array.sum(values) / values.length;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapMoyenneParAnnee, reduceAvg, { out: "mr_moyenne_par_annee" });
+```
+
+---
+
+## 15) Identifier les réalisateurs dont la note moyenne de tous leurs films est supérieure à 80
+
+On calcule d’abord la moyenne de chaque film, puis on agrège par réalisateur via un couple (sum, count).  
+La sélection “> 80” se fait dans `finalize`.
+
+**Map**
+```js
+var mapRealisateurAvgGT80 = function () {
+  if (this.director && this.grades && this.grades.length > 0) {
+    var sum = 0;
+    for (var i = 0; i < this.grades.length; i++) {
+      sum += this.grades[i].score;
+    }
+    var avgFilm = sum / this.grades.length;
+
+    emit(this.director, { sum: avgFilm, count: 1 });
+  }
+};
+```
+
+**Reduce**
+```js
+var reduceSumCount = function (key, values) {
+  var sum = 0;
+  var count = 0;
+
+  for (var i = 0; i < values.length; i++) {
+    sum += values[i].sum;
+    count += values[i].count;
+  }
+
+  return { sum: sum, count: count };
+};
+```
+
+**Finalize**
+```js
+var finalizeAvgGT80 = function (key, value) {
+  var avg = value.sum / value.count;
+  return (avg > 80) ? avg : null;
+};
+```
+
+**Exécution**
+```js
+db.films.mapReduce(mapRealisateurAvgGT80, reduceSumCount, {
+  out: "mr_realisateurs_avg_gt80",
+  finalize: finalizeAvgGT80
+});
+```
+
+Pour afficher uniquement les réalisateurs retenus (valeur non nulle) :
+```js
+db.mr_realisateurs_avg_gt80.find({ value: { $ne: null } });
+```
+
+---
 
 ## 9. Conclusion
 
